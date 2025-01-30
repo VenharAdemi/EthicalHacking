@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Search Results{% endblock %}
+{% block title %}Search{% endblock %}
 
 {% block content %}
     <h1>Search Results</h1>
@@ -11,7 +11,7 @@
     </form>
     <ul>
         {% for result in results %}
-            <li><strong>ID:</strong> {{ result.0 }} | <strong>Title:</strong> {{ result.1 }} |
+            <li style="list-style: none; padding: 0; margin: 0;"><strong>ID:</strong> {{ result.0 }} | <strong>Title:</strong> {{ result.1 }} |
                 <strong>Content:</strong> {{ result.2 }}</li>
         {% endfor %}
     </ul>

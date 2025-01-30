@@ -6,27 +6,26 @@ from django.db import connection
 from django.contrib.auth.models import User
 import pickle
 import requests
-import xml.etree.ElementTree as ET
+import lxml.etree as ET  # Use lxml instead of xml.etree.ElementTree
 
 from .froms import RegisterForm
 from .models import Post, UserPost
-
 
 def index(request):
     posts = Post.objects.all()
     return render(request, "index.html", {"posts": posts})
 
+
 # 1. SQL Injection - Directly injecting SQL via user input
-# TODO: MAKE IT SQL Injection vulnerability
 def search(request):
-    query = request.GET.get('q', '')
+    query = request.GET.get('q', '')  # Get search query from GET request
     results = []
-    if request.method == "POST":
-        sql = f"SELECT * FROM ethicalHacking_post WHERE title LIKE '%{query}%'"
-        print(f"Executing SQL: {sql}")
+    if query:  # Only execute SQL if there's a search query
+        sql = f"SELECT id, title, content FROM ethicalHacking_post WHERE title LIKE '%{query}%'"
+        print(f"Executing SQL: {sql}")  # Debugging output
         with connection.cursor() as cursor:
-            cursor.execute(sql)
-            results = cursor.fetchall()
+            cursor.execute(sql)  # Vulnerable to SQL Injection
+            results = cursor.fetchall()  # Fetch all results
     return render(request, "search.html", {"query": query, "results": results})
 
 
@@ -44,16 +43,13 @@ def register(request):
         if form.is_valid():
             username = form.cleaned_data["username"]
             password = form.cleaned_data["password"]  # ⚠ Storing in plain text (INSECURE)
-
             # Directly storing the plain-text password (BAD PRACTICE)
             user = UserPost(username=username)
             user.password = password  # No hashing!
             user.save()
-
             return HttpResponse("User registered successfully (INSECURE)")
     else:
         form = RegisterForm()
-
     return render(request, "register.html", {"form": form})
 
 
@@ -64,12 +60,9 @@ def deserialize_data(request):
     try:
         # Decode the Base64 string into bytes
         decoded_data = base64.b64decode(data)
-
         # Unpickle the decoded data
         obj = pickle.loads(decoded_data)
-
         return HttpResponse(f"Deserialized object: {obj}")
-
     except Exception as e:
         # Handle errors
         return HttpResponse(f"Error deserializing data: {str(e)}", status=500)
@@ -92,10 +85,20 @@ def transfer_money(request):
 
 # 7. SSRF - Allowing user-supplied URLs without validation
 # example http://127.0.0.1:8000/fetch_data?url=http://example.org
+import requests
+from django.http import HttpResponse, JsonResponse
 def fetch_data(request):
     url = request.GET.get("url")
-    response = requests.get(url)  # Attacker can fetch internal resources
-    return HttpResponse(f"Fetched data from {url}: {response.text}")
+    if not url:
+        return JsonResponse({"error": "Missing URL parameter"}, status=400)
+    try:
+        response = requests.get(url)
+        return HttpResponse(f"Fetched data from {url}: {response.text}")
+    except requests.exceptions.MissingSchema:
+        return JsonResponse({"error": "Invalid URL format. Must include http:// or https://"}, status=400)
+    except requests.exceptions.RequestException as e:
+        return JsonResponse({"error": f"Request failed: {str(e)}"}, status=500)
+
 
 
 # 8. Insufficient Logging & Monitoring - No logging for failed logins
@@ -115,11 +118,14 @@ def parse_xml(request):
         if not xml_data:
             return render(request, 'parse_xml.html', {'error': 'No XML data provided!'})
         try:
-            root = ET.fromstring(xml_data)
-            # Process the XML data as needed
-            extracted_data = ET.tostring(root, encoding='UTF-8').decode('UTF-8')
+            # Convert XML string to bytes to support encoding declaration
+            xml_bytes = xml_data.encode('utf-8')
+            # Use an unsafe parser that allows entity expansion (VULNERABLE to XXE)
+            parser = ET.XMLParser(resolve_entities=True, load_dtd=True)
+            root = ET.fromstring(xml_bytes, parser)
+            extracted_data = ET.tostring(root, encoding='utf-8').decode('utf-8')
             return render(request, 'parse_xml.html', {'message': 'XML parsed successfully!', 'xml_data': extracted_data})
-        except ET.ParseError:
+        except ET.XMLSyntaxError:
             return render(request, 'parse_xml.html', {'error': 'Invalid XML data!'})
     return render(request, 'parse_xml.html')
 

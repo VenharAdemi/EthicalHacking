@@ -1,5 +1,3 @@
-
-
 # Register your models here.
 # blog/admin.py
 from django.contrib import admin
